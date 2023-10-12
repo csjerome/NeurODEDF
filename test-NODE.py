@@ -6,8 +6,51 @@ import tensorflow.keras.optimizers as tfko
 from tfdiffeq import odeint
 import keyboard as kb
 import os
+import configparser
 
-mpl.use('TkAgg')
+#%%
+## ------------   Files and Parameters   --------------- ##
+
+paramfile = "default.txt"
+
+cg = configparser.ConfigParser()
+cg.read(paramfile)
+w0 = float(cg.get('System Parameters','w0'))
+f = float(cg.get('System Parameters','f'))
+x0 = float(cg.get('System Parameters','x0'))
+y0 = float(cg.get('System Parameters','y0'))
+
+w0i = float(cg.get('Initial Values', 'w0i'))
+fi = float(cg.get('Initial Values', 'fi'))
+
+t_0 = float(cg.get('Train Values', 't_0'))
+t_end = float(cg.get('Train Values', 't_end'))
+n_samples = int(cg.get('Train Values', 't_sample'))
+learning_rate = float(cg.get('Train Values','learning_rate'))
+epochs = int(cg.get('Train Values','epochs'))
+
+true_params = [w0, f]
+s = np.sqrt(1-f**2)
+
+an_sol_x = lambda t : y0/w0/s*np.exp(-w0*f*t)*np.sin(w0*s*t)
+an_sol_y = lambda t : y0/w0/s*np.exp(-w0*f*t)*(s*np.cos(w0*s*t)+f*np.sin(w0*s*t))
+
+t_space = np.linspace(t_0, t_end, n_samples)
+
+dataset_outs = [tf.expand_dims(an_sol_x(t_space), axis=1), \
+                tf.expand_dims(an_sol_y(t_space), axis=1)]
+
+t_space_tensor = tf.constant(t_space)
+x_init = tf.constant([x0], dtype=t_space_tensor.dtype)
+y_init = tf.constant([y0], dtype=t_space_tensor.dtype)
+u_init = tf.convert_to_tensor([x_init, y_init], dtype=t_space_tensor.dtype)
+args = [tf.Variable(initial_value=w0i, name='w0', trainable=True,dtype=t_space_tensor.dtype),
+        tf.Variable(initial_value=fi, name='f', trainable=True,dtype=t_space_tensor.dtype)]
+
+optimizer = tfko.Adam(learning_rate=learning_rate)
+
+#%%
+## ------------- Functions ----------------- ##
 
 def parametric_ode_system(t, u, args):
     w , k= args[0], args[1]
@@ -15,37 +58,6 @@ def parametric_ode_system(t, u, args):
     dx_dt = y
     dy_dt = -x*w**2 - 2*k*w*y
     return tf.stack([dx_dt, dy_dt])
-
-
-w0 = 0.8
-f = 0.3
-A = 7
-true_params = [w0, f]
-
-s = np.sqrt(1-f**2)
-
-an_sol_x = lambda t : A*np.exp(-w0*f*t)*np.sin(w0*s*t)
-an_sol_y = lambda t : A*w0*np.exp(-w0*f*t)*(s*np.cos(w0*s*t)+f*np.sin(w0*s*t))
-
-
-t_begin=0.
-t_end= 15
-t_nsamples= 250
-t_space = np.linspace(t_begin, t_end, t_nsamples)
-
-dataset_outs = [tf.expand_dims(an_sol_x(t_space), axis=1), \
-                tf.expand_dims(an_sol_y(t_space), axis=1)]
-
-t_space_tensor = tf.constant(t_space)
-x_init = tf.constant([0.], dtype=t_space_tensor.dtype)
-y_init = tf.constant([A*w0*s], dtype=t_space_tensor.dtype)
-u_init = tf.convert_to_tensor([x_init, y_init], dtype=t_space_tensor.dtype)
-args = [tf.Variable(initial_value=3, name='w0', trainable=True,dtype=t_space_tensor.dtype),
-        tf.Variable(initial_value=0.5, name='f', trainable=True,dtype=t_space_tensor.dtype)]
-
-learning_rate = 0.05
-epochs = 200
-optimizer = tfko.Adam(learning_rate=learning_rate)
 
 def net():
     return odeint(lambda ts, u0: parametric_ode_system(ts, u0, args),
@@ -55,7 +67,9 @@ def loss_func(num_sol):
     return tf.reduce_sum(tf.square(dataset_outs[0] - num_sol[:, 0])) + \
         tf.reduce_sum(tf.square(dataset_outs[1] - num_sol[:, 1]))
 
+#%%
 
+## ------------------- Training ------------------ ##
 L = []
 Prm = []
 epoch = 0
@@ -73,6 +87,10 @@ while epoch < epochs and not kb.is_pressed("alt+ctrl+shift"):
 print("Learned parameters:", [arg.numpy() for arg in args])
 
 #%%
+
+
+## ----------------------- Plots ---------------------- ##
+mpl.use('TkAgg')
 num_sol = net()
 x_num_sol = num_sol[:, 0].numpy()
 y_num_sol = num_sol[:, 1].numpy()
@@ -107,6 +125,6 @@ plt.xlabel('t')
 plt.legend()
 plt.grid()
 plt.show()
-#%%
 
 #%%
+
