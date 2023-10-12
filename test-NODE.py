@@ -6,7 +6,6 @@ import tensorflow.keras.optimizers as tfko
 from tfdiffeq import odeint
 import keyboard as kb
 import os
-import seaborn as sbn
 
 mpl.use('TkAgg')
 
