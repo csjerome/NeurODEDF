@@ -33,7 +33,7 @@ true_params = [w0, f]
 s = np.sqrt(1-f**2)
 
 an_sol_x = lambda t : y0/w0/s*np.exp(-w0*f*t)*np.sin(w0*s*t)
-an_sol_y = lambda t : y0/w0/s*np.exp(-w0*f*t)*(s*np.cos(w0*s*t)+f*np.sin(w0*s*t))
+an_sol_y = lambda t : y0/s*np.exp(-w0*f*t)*(s*np.cos(w0*s*t)+f*np.sin(w0*s*t))
 
 t_space = np.linspace(t_0, t_end, n_samples)
 
