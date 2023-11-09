@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import tensorflow as tf
+import tensorflow.keras as kr
 import tensorflow.keras.optimizers as tfko
 from tfdiffeq import odeint
 import keyboard as kb
@@ -35,11 +36,10 @@ s = np.sqrt(1-f**2)
 an_sol_x = lambda t : y0/w0/s*np.exp(-w0*f*t)*np.sin(w0*s*t)
 an_sol_y = lambda t : y0/s*np.exp(-w0*f*t)*(s*np.cos(w0*s*t)+f*np.sin(w0*s*t))
 
-t_space = np.linspace(t_0, t_end, n_samples)
+t_space =np.linspace(t_0, t_end, n_samples,dtype = "float32")
 
-dataset_outs = [tf.expand_dims(an_sol_x(t_space), axis=1), \
-                tf.expand_dims(an_sol_y(t_space), axis=1)]
-
+dataset_outs = tf.expand_dims(np.transpose([an_sol_x(t_space), an_sol_y(t_space)]), axis = 2)
+print(tf.shape(dataset_outs))
 t_space_tensor = tf.constant(t_space)
 x_init = tf.constant([x0], dtype=t_space_tensor.dtype)
 y_init = tf.constant([y0], dtype=t_space_tensor.dtype)
@@ -59,9 +59,31 @@ def parametric_ode_system(t, u, args):
     dy_dt = -x*w**2 - 2*k*w*y
     return tf.stack([dx_dt, dy_dt])
 
+class MLP(kr.Model):
+    def __init__(self, hidden):
+        super().__init__()
+        self.net = tf.keras.models.Sequential()
+        self.net.add(kr.layers.Dense(hidden, input_shape =(2,), activation = 'relu'))
+        self.net.add(kr.layers.Dense(hidden, activation= 'relu'))
+        self.net.add(kr.layers.Dense(2, input_shape = (hidden,)))
+
+    def __call__(self, t, state):
+        return tf.convert_to_tensor(np.transpose(self.net(np.transpose(state))), dtype=t_space_tensor.dtype)
+
+
+class Net(kr.Model):
+    def __init__(self,hidden):
+        super().__init__()
+        self.model = MLP(hidden)
+        #print(self.model(t_space_tensor, u_init))
+
+    def __call__(self, u_init,t):
+        return odeint(self.model,u_init,t_space_tensor)
+'''
 def net():
     return odeint(lambda ts, u0: parametric_ode_system(ts, u0, args),
                   u_init, t_space_tensor)
+'''
 
 def loss_func(num_sol):
     return tf.reduce_sum(tf.square(dataset_outs[0] - num_sol[:, 0])) + \
@@ -71,20 +93,24 @@ def loss_func(num_sol):
 
 ## ------------------- Training ------------------ ##
 L = []
-Prm = []
+#Prm = []
 epoch = 0
+net = Net(hidden = 100)
+loss = kr.losses.MeanSquaredError()
+
 while epoch < epochs and not kb.is_pressed("alt+ctrl+shift"):
     with tf.GradientTape() as tape:
-        num_sol = net()
-        loss_value = loss_func(num_sol)
+        num_sol = net(u_init,t_space_tensor)
+        #loss_value = loss_func(num_sol)
+        loss_value = loss(num_sol,dataset_outs)
     print("Epoch:", epoch, " loss:", loss_value.numpy())
     L.append(loss_value.numpy())
-    Prm.append([arg.numpy() for arg in args])
-    grads = tape.gradient(loss_value, args)
-    optimizer.apply_gradients(zip(grads, args))
+    #Prm.append([arg.numpy() for arg in args])
+    grads = tape.gradient(loss_value, net.model.trainable_weights)
+    optimizer.apply_gradients(zip(grads, net.model.trainable_weights))
     epoch +=1
 
-print("Learned parameters:", [arg.numpy() for arg in args])
+#print("Learned parameters:", [arg.numpy() for arg in args])
 
 #%%
 
