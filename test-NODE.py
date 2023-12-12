@@ -39,7 +39,6 @@ an_sol_y = lambda t : y0/s*np.exp(-w0*f*t)*(s*np.cos(w0*s*t)+f*np.sin(w0*s*t))
 t_space =np.linspace(t_0, t_end, n_samples,dtype = "float32")
 
 dataset_outs = tf.expand_dims(np.transpose([an_sol_x(t_space), an_sol_y(t_space)]), axis = 2)
-print(tf.shape(dataset_outs))
 t_space_tensor = tf.constant(t_space)
 x_init = tf.constant([x0], dtype=t_space_tensor.dtype)
 y_init = tf.constant([y0], dtype=t_space_tensor.dtype)
@@ -63,9 +62,12 @@ class MLP(kr.Model):
     def __init__(self, hidden):
         super().__init__()
         self.net = tf.keras.models.Sequential()
-        self.net.add(kr.layers.Dense(hidden, input_shape =(2,), activation = 'relu'))
+        self.net.add(kr.Input(shape = (2,)))
+        self.net.add(kr.layers.Dense(hidden, activation = 'relu'))
         self.net.add(kr.layers.Dense(hidden, activation= 'relu'))
-        self.net.add(kr.layers.Dense(2, input_shape = (hidden,)))
+        self.net.add(kr.layers.Dense(2))
+
+
 
     def __call__(self, t, state):
         return tf.convert_to_tensor(np.transpose(self.net(np.transpose(state))), dtype=t_space_tensor.dtype)
@@ -89,26 +91,34 @@ def loss_func(num_sol):
     return tf.reduce_sum(tf.square(dataset_outs[0] - num_sol[:, 0])) + \
         tf.reduce_sum(tf.square(dataset_outs[1] - num_sol[:, 1]))
 
+
 #%%
 
 ## ------------------- Training ------------------ ##
 L = []
 #Prm = []
+
+
 epoch = 0
 net = Net(hidden = 100)
 loss = kr.losses.MeanSquaredError()
 
+net.compile(
+    optimizer=optimizer,
+    loss= loss)
+
 while epoch < epochs and not kb.is_pressed("alt+ctrl+shift"):
     with tf.GradientTape() as tape:
+        tape.watch(net.model.trainable_weights)
         num_sol = net(u_init,t_space_tensor)
-        #loss_value = loss_func(num_sol)
-        loss_value = loss(num_sol,dataset_outs)
-    print("Epoch:", epoch, " loss:", loss_value.numpy())
-    L.append(loss_value.numpy())
-    #Prm.append([arg.numpy() for arg in args])
-    grads = tape.gradient(loss_value, net.model.trainable_weights)
-    optimizer.apply_gradients(zip(grads, net.model.trainable_weights))
-    epoch +=1
+        loss_value = loss(dataset_outs,num_sol)
+        print([np.shape(_) for _ in net.model.trainable_weights])
+        print("Epoch:", epoch, " loss:", loss_value.numpy())
+        L.append(loss_value.numpy())
+        grads = tape.gradient(loss_value, net.model.trainable_weights)
+        print(grads)
+        optimizer.apply_gradients(zip(grads, net.model.trainable_weights))
+        epoch +=1
 
 #print("Learned parameters:", [arg.numpy() for arg in args])
 
