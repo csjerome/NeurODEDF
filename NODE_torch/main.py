@@ -8,7 +8,7 @@ from train import *
 
 train, test = create_dataset()
 
-model_phy_option = 'incomplete'
+model_phy_option = 'data_driven'
 model_aug_option = True
 
 if model_phy_option == 'incomplete':

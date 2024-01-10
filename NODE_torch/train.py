@@ -92,6 +92,7 @@ class APHYNITYExperiment():
 
     def metric(self, states, states_pred, **kwargs):
         metrics = {}
+        if self.net.model_phy is None : return metrics
         metrics['param_error'] = statistics.mean(abs(v1-float(v2))/v1 for v1, v2 in zip(self.train.dataset.params.values(), self.net.model_phy.params.values()))
         metrics.update({f'{k}': v.data.item() for k,v in self.net.model_phy.params.items()})
         metrics.update({f'{k}_real': v for k, v in self.train.dataset.params.items() if k in metrics})
