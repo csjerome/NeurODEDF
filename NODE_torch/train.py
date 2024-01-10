@@ -32,7 +32,6 @@ class APHYNITYExperiment():
     def val_step(self, batch):
         self.net.train(False)
         with torch.no_grad():
-            #batch = torch.as_tensor(batch, None, 'cpu')
             loss, output = self.step(batch, backward=False)
             metric = self.metric(**output, **batch)
 
@@ -56,10 +55,7 @@ class APHYNITYExperiment():
         pred = self.net(y0, t)
         loss = self.traj_loss(pred, target)
         loss_op  = 0
-        '''
-        for param in self.net.model_phy.parameters():
-            print(param.grad)
-        '''
+
 
         if self.net.model_aug != None :
             aug_deriv = self.net.model_aug.get_derivatives(states)
@@ -80,7 +76,7 @@ class APHYNITYExperiment():
         }
 
         output = {
-            'states_pred'     : pred,
+            'states_pred': pred,
         }
         return loss, output
 
@@ -121,7 +117,7 @@ class APHYNITYExperiment():
                                 'model_state_dict': self.net.state_dict(),
                                 'optimizer_state_dict': self.optimizer.state_dict(),
                                 'loss': loss_test_min,
-                            }, self.path + f'/model_{loss_test_min:.3e}.pt')
+                            }, self.path + f'/model_{loss_test_min:.2e}.pt')
                         loss_test = {
                             'loss_test': loss_test,
                         }

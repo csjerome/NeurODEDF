@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../APHYNITY-main/.idea/APHYNITY-main.iml" filepath="$PROJECT_DIR$/../APHYNITY-main/.idea/APHYNITY-main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/NODE_torch.iml" filepath="$PROJECT_DIR$/.idea/NODE_torch.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../PBRL/.idea/PBRL.iml" filepath="$PROJECT_DIR$/../../PBRL/.idea/PBRL.iml" />
     </modules>
   </component>
 </project>
