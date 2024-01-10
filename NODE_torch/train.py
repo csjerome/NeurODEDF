@@ -20,7 +20,7 @@ class APHYNITYExperiment():
         self.train = train
         self.test = test
 
-    def train_step(self, batch, val=False):
+    def train_step(self, batch):
         self.net.train(True)
         #batch = torch.as_tensor(batch, device ='cpu')
         loss, output = self.step(batch)
@@ -38,18 +38,15 @@ class APHYNITYExperiment():
 
         return batch, output, loss, metric
 
-    def log(self, epoch, iteration, metrics):
-        message = '[{epoch}/{max_epoch}][{i}/{max_i}]'.format(
-            step=epoch *len(self.train)+ iteration+1,
-            epoch=epoch+1,
-            max_epoch=self.nepoch,
-            i=iteration+1,
-            max_i=len(self.train)
+    def log(self, epoch, metrics):
+        message = '[{epoch}/{max_epoch}]'.format(
+            epoch=epoch +1,
+            max_epoch=self.nepoch
         )
         for name, value in metrics.items():
             message += ' | {name}: {value:.2e}'.format(name=name, value=value)
-
         print(message)
+
     def lambda_update(self, loss):
         self._lambda = self._lambda + self.tau_2 * loss
 
@@ -58,12 +55,18 @@ class APHYNITYExperiment():
         y0 = states[:, :, 0]
         pred = self.net(y0, t)
         loss = self.traj_loss(pred, target)
-        aug_deriv = self.net.model_aug.get_derivatives(states)
+        loss_op  = 0
+        '''
+        for param in self.net.model_phy.parameters():
+            print(param.grad)
+        '''
 
-        if self.min_op == 'l2_normalized':
-            loss_op = ((aug_deriv.norm(p=2, dim=1) / (states.norm(p=2, dim=1) +1e-5)) ** 2).mean()
-        elif self.min_op == 'l2':
-            loss_op = (aug_deriv.norm(p=2, dim=1) ** 2).mean()
+        if self.net.model_aug != None :
+            aug_deriv = self.net.model_aug.get_derivatives(states)
+            if self.min_op == 'l2_normalized':
+                loss_op = ((aug_deriv.norm(p=2, dim=1) / (states.norm(p=2, dim=1) +1e-5)) ** 2).mean()
+            elif self.min_op == 'l2':
+                loss_op = (aug_deriv.norm(p=2, dim=1) ** 2).mean()
 
         if backward:
             loss_total = loss * self._lambda + loss_op
@@ -89,34 +92,26 @@ class APHYNITYExperiment():
 
     def metric(self, states, states_pred, **kwargs):
         metrics = {}
-        metrics['param_error'] = statistics.mean(abs(v1-float(v2))/v1 for v1, v2 in zip(self.train.dataset.params.values(), self.net.get_pde_params().values()))
-        metrics.update(self.net.get_pde_params())
+        metrics['param_error'] = statistics.mean(abs(v1-float(v2))/v1 for v1, v2 in zip(self.train.dataset.params.values(), self.net.model_phy.params.values()))
+        metrics.update({f'{k}': v.data.item() for k,v in self.net.model_phy.params.items()})
         metrics.update({f'{k}_real': v for k, v in self.train.dataset.params.items() if k in metrics})
         return metrics
 
     def run(self):
         loss_test_min = None
         for epoch in range(self.nepoch):
-            for iteration, data in enumerate(self.train, 0):
                 for _ in range(self.niter):
-                    _, _, loss, metric = self.train_step(data)
-
-                total_iteration = epoch * (len(self.train)) + (iteration + 1)
+                    _, _, loss, metric = self.train_step(next(iter(self.train)))
                 loss_train = loss['loss'].item()
                 self.lambda_update(loss_train)
 
-                if total_iteration % self.nlog == 0:
+                if (epoch+1)  % self.nlog == 0:
+                    self.log(epoch, loss | metric)
 
-                    self.log(epoch, iteration, loss | metric)
-
-                if total_iteration % self.nupdate == 0:
+                if (epoch+1) % self.nupdate == 0:
                     with torch.no_grad():
-                        loss_test = 0.
-                        for j, data_test in enumerate(self.test, 0):
-                            _, _, loss, metric = self.val_step(data_test)
-                            loss_test += loss['loss'].item()
-
-                        loss_test /= j + 1
+                        _, _, loss, metric = self.val_step(next(iter(self.test)))
+                        loss_test = loss['loss'].item()
 
                         if loss_test_min == None or loss_test_min > loss_test:
                             loss_test_min = loss_test
@@ -130,7 +125,7 @@ class APHYNITYExperiment():
                             'loss_test': loss_test,
                         }
                         print('#' * 80)
-                        self.log(epoch, iteration, loss_test | metric)
+                        self.log(epoch, loss_test | metric)
                         print(f'lambda: {self._lambda}')
                         print('#' * 80)
 

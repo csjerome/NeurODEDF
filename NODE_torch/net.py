@@ -9,8 +9,8 @@ class DampedPendulumParamPDE(nn.Module):
         self.real_params = real_params
         self.is_complete = is_complete
         self.params_org = nn.ParameterDict({
-            'omega0_square_org': nn.Parameter(torch.tensor(0.2)),
-            'alpha_org': nn.Parameter(torch.tensor(0.1)),
+            'omega0_square_org': nn.Parameter(torch.tensor(0.2), requires_grad = True),
+            'alpha_org': nn.Parameter(torch.tensor(0.1), requires_grad= True),
         })
         self.params = OrderedDict()
         if real_params is not None:
@@ -18,14 +18,14 @@ class DampedPendulumParamPDE(nn.Module):
 
     def forward(self, state):
         if self.real_params is None:
-            self.params['omega0_square'] = self.params_org['omega0_square_org'].item()
+            self.params['omega0_square'] = self.params_org['omega0_square_org']
 
         q = state[:,0:1]
         p = state[:,1:2]
 
         if self.is_complete:
             if self.real_params is None:
-                self.params['alpha'] = self.params_org['alpha_org'].item()
+                self.params['alpha'] = self.params_org['alpha_org']
             (omega0_square, alpha) = list(self.params.values())
             dqdt = p
             dpdt = - omega0_square * torch.sin(q) - alpha * p
@@ -65,41 +65,37 @@ class MLP(nn.Module):
         return x
 
 class DerivativeEstimator(nn.Module):
-    def __init__(self, model_phy, model_aug, is_augmented):
+    def __init__(self, model_phy, model_aug):
         super().__init__()
         self.model_phy = model_phy
         self.model_aug = model_aug
-        self.is_augmented = is_augmented
 
 
     def forward(self, t, state):
-        res_phy = self.model_phy(state)
-        if self.is_augmented:
-            res_aug = self.model_aug(state)
-            return res_phy + res_aug
-        else:
-            return res_phy
+        res = 0
+        if self.model_phy != None:
+            res += self.model_phy(state)
+        if self.model_aug != None:
+            res += self.model_aug(state)
+        return res
 
 class Forecaster(nn.Module):
-    def __init__(self, model_phy, model_aug, is_augmented, method='rk4', options=None):
+    def __init__(self, model_phy, model_aug = None, method='rk4'):
         super().__init__()
-
         self.model_phy = model_phy
         self.model_aug = model_aug
 
-        self.derivative_estimator = DerivativeEstimator(self.model_phy, self.model_aug, is_augmented=is_augmented)
+        self.derivative_estimator = DerivativeEstimator(self.model_phy, self.model_aug)
         self.method = method
-        self.options = options
+
         self.int_ = odeint
 
     def forward(self, y0, t):
         # y0 = y[:,:,0]
-        res = self.int_(self.derivative_estimator, y0=y0, t=t, method=self.method, options=self.options)
+        res = self.int_(self.derivative_estimator, y0=y0, t=t, method=self.method)
         # res: T x batch_size x n_c (x h x w)
         dim_seq = y0.dim() + 1
         dims = [1, 2, 0] + list(range(dim_seq))[3:]
         return res.permute(*dims)   # batch_size x n_c x T (x h x w)
 
-    def get_pde_params(self):
-        return self.model_phy.params
 #%%
