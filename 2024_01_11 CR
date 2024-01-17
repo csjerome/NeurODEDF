@@ -1,0 +1,31 @@
+Avancées :
+
+Depuis la dernière fois -> modèle full data driven (marche bien peut-être trop - convergence assez efficace dès la deuxième phase de test)
+
+Tentative de complexifier les modèles : implémentation d'un moteur (à l'image du papier)
+
+A suivre : commande du modèle avec un MPC sur OpenModélica
+
+Réseau de neurones sur Modelica : Compilateur sparse pour gagner en efficacité -> idée de faire du code Modelica approuvée 
+
+Comment implémenter les poids et structures de modèles afin de les utiliser dans Openmodelica
+Recoder le réseau de neurones dans Openmodelica -> transformation du .pt en .mo automatique (au travers d'un script)
+
+Rapport intermédiaire : Méthodologie et bibliographie, présentation de la démarche 
+Réflexion sur la méthode et le programme de travail, comment effextuer le lien entre Openmodelica et Python ? Plan de route, perspectives 
+Explication de ce qu'est un neural-ODE et faire de la pédagogie 
+
+Possibilité d'inclure des résultats de simulations
+Bien expliquer l'endroit où l'on est et expliquer notre vision pour les mois à venir, formaliser les idées 
+
+Point sur l'organisation : comment structurer notre travail, présentation du github
+
+Rapport final : Obectif -> transmission de nos apprentissages à un futur éventuels stagiaires 
+
+Question sur le papier : Processus itératif de l'exemple pas forcement nécessaire et plus efficace (vaut peut-être quand même d'évaluer les gains plus tard)
+
+Avantages du Neural ODE : possibilité d'intégrer des éléments physiques plutôt que de fonctionner seulement en data driven 
+Comparaison des modèles possibles avec le modèle hybride par exemple
+
+Prochaine réunion : 25 janvier 11h
+Envoyer pour le 21 janvier un brouillon du rapport comme support de la réunion
