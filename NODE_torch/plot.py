@@ -8,7 +8,7 @@ import shelve
 import matplotlib as mpl
 mpl.use('TkAgg')
 
-file = 'model_2.278e-02.pt'
+file = 'model_1.65e+00.pt'
 param = torch.load('./exp/'+ file)
 train, test = create_dataset()
 
@@ -25,7 +25,7 @@ elif model_phy_option == 'data_driven':
     model_phy = None
 
 if model_aug_option == True :
-    model_aug = MLP(state_c=2, hidden=200)
+    model_aug = MLP(state_c=2, hidden=100,input=1)
 else : model_aug = None
 
 net = Forecaster(model_phy=model_phy, model_aug=model_aug)
@@ -33,20 +33,19 @@ net = Forecaster(model_phy=model_phy, model_aug=model_aug)
 net.load_state_dict(param['model_state_dict'])
 net.eval()
 
-# data = shelve.open('./_test.bak')
+#data = shelve.open('./_test.bak')
 data = next(iter(test))
-Y  = data['states'][0]
+Y = data['states'][0]
 t = data['t'][0]
-
+u = data['actions'][0]
 y0 = torch.unsqueeze(Y[:, 0],0)
-pred = net(y0, t)
+u = torch.unsqueeze(u,0)
+pred = net(y0,t,u)
 
 for y in Y :
     plt.plot(t,y)
 
-
 for y in pred[0]:
-
     plt.plot(t,y.detach().numpy())
 
 plt.show()

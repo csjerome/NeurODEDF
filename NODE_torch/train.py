@@ -49,16 +49,16 @@ class APHYNITYExperiment():
     def lambda_update(self, loss):
         self._lambda = self._lambda + self.tau_2 * loss
 
-    def _forward(self, states, t, backward):
+    def _forward(self, states, t, u, backward):
         target = states
         y0 = states[:, :, 0]
-        pred = self.net(y0, t)
+        pred = self.net(y0, t, u)
         loss = self.traj_loss(pred, target)
         loss_op  = 0
 
 
         if self.net.model_aug != None :
-            aug_deriv = self.net.model_aug.get_derivatives(states)
+            aug_deriv = self.net.model_aug.get_derivatives(states,u)
             if self.min_op == 'l2_normalized':
                 loss_op = ((aug_deriv.norm(p=2, dim=1) / (states.norm(p=2, dim=1) +1e-5)) ** 2).mean()
             elif self.min_op == 'l2':
@@ -83,7 +83,10 @@ class APHYNITYExperiment():
     def step(self, batch, backward=True):
         states = batch['states']
         t = batch['t'][0]
-        loss, output = self._forward(states, t, backward)
+        u = None
+        if batch['actions'] is not None:
+            u = batch['actions']
+        loss, output = self._forward(states, t, u, backward)
         return loss, output
 
     def metric(self, states, states_pred, **kwargs):
@@ -110,7 +113,7 @@ class APHYNITYExperiment():
                         _, _, loss, metric = self.val_step(next(iter(self.test)))
                         loss_test = loss['loss'].item()
 
-                        if loss_test_min == None or loss_test_min > loss_test:
+                        if True : #loss_test_min == None or loss_test_min > loss_test:
                             loss_test_min = loss_test
                             torch.save({
                                 'epoch': epoch,
@@ -125,5 +128,3 @@ class APHYNITYExperiment():
                         self.log(epoch, loss_test | metric)
                         print(f'lambda: {self._lambda}')
                         print('#' * 80)
-
-#%%

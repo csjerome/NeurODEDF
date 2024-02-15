@@ -8,7 +8,7 @@ import shelve
 
 
 class DampledPendulum(Dataset):
-    __default_params = OrderedDict(omega0_square=(2 * np.pi / 6) ** 2, alpha=0.2)
+    __default_params = OrderedDict(omega0_square=(2 * np.pi / 6) ** 2, alpha=0.5)
 
     def __init__(self, path, num_seq, time_horizon, dt, params=None, group='train'):
         super().__init__()
@@ -23,12 +23,11 @@ class DampledPendulum(Dataset):
         self.group = group
         self.data = shelve.open(path)
 
-    def _f(self, t, x):  # coords = [q,p]
+    def _f(self, t, x,u):  # coords = [q,p]
         omega0_square, alpha = list(self.params.values())
-
         q, p = np.split(x, 2)
         dqdt = p
-        dpdt = -omega0_square * np.sin(q) - alpha * p
+        dpdt = -omega0_square * np.sin(q) - alpha * p + u[int(t/self.dt)-1]
         return np.concatenate([dqdt, dpdt], axis=-1)
 
     def _get_initial_condition(self, seed):
@@ -38,19 +37,31 @@ class DampledPendulum(Dataset):
         y0 = y0 / np.sqrt((y0 ** 2).sum()) * radius
         return y0
 
+    def _get_action(self,seed):
+        s = 1
+        np.random.seed(seed if self.group == 'train' else np.iinfo(np.int32).max - seed)
+        u = np.random.normal(0,s,(int(self.time_horizon/self.dt),1))
+        return u
+
     def __getitem__(self, index):
         t_eval = torch.from_numpy(np.arange(0, self.time_horizon, self.dt))
-        if self.data.get(str(index)) is None:
+        if self.data.get('states_' + str(index)) is None:
             y0 = self._get_initial_condition(index)
-            states = solve_ivp(fun=self._f, t_span=(0, self.time_horizon), y0=y0, method='DOP853', t_eval=t_eval, rtol=1e-10).y
-            self.data[str(index)] = states
+            u = self._get_action(index)
+            states = solve_ivp(fun=self._f, t_span=(0, self.time_horizon), y0=y0, method='DOP853', t_eval=t_eval, rtol=1e-10, args = (u,)).y
+
+            self.data['states_' + str(index)] = states
+            self.data['actions_' + str(index)] = u
             states = torch.from_numpy(states).float()
         else:
-            states = torch.from_numpy(self.data[str(index)]).float()
-        return {'states': states, 't': t_eval.float()}
+            states = torch.from_numpy(self.data['states_'+ str(index)]).float()
+            u = torch.from_numpy(self.data['actions_'+ str(index)]).float()
+
+        return {'states': states, 'actions': u, 't': t_eval.float()}
 
     def __len__(self):
         return self.len
+
 
 
 

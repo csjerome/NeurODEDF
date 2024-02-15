@@ -21,7 +21,7 @@ elif model_phy_option == 'data_driven':
     model_phy = None
 
 if model_aug_option == True :
-    model_aug = MLP(state_c=2, hidden=200)
+    model_aug = MLP(state_c=2, hidden=100,input=1)
 else : model_aug = None
 
 net = Forecaster(model_phy=model_phy, model_aug=model_aug)
@@ -30,7 +30,7 @@ lambda_0 = 1.0
 tau_1 = 1e-3
 tau_2 = 1
 niter = 5
-min_op = 'l2_normalized'
+min_op = 'l2'
 
 optimizer = torch.optim.Adam(net.parameters(), lr=tau_1, betas=(0.9, 0.999))
 experiment = APHYNITYExperiment(
@@ -39,6 +39,4 @@ experiment = APHYNITYExperiment(
     nupdate=100, nepoch=50000)
 
 experiment.run()
-
-
-
+#%%
