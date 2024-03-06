@@ -1,0 +1,25 @@
+Modelica :
+
+Présentation des résultats avec utilisation des matrices dans le code
+
+Discussions sur l'approche à développer pour la suite du projet
+ - 1ère méthode des matrices dans modelica
+ - 2ème méthode avec les FMU mais ticket d'entrée peux être important et compliqué après une fois la méthode comprise elle est très efficace
+
+Python :
+
+Comment expliquer les résultats actuels avec Python ?
+Implémentation d'une équation plus simple avec des entrées plus facilement prédictibles
+Mr Sandou n'est pas surpris sur l'apprentissage sans frottement
+-> dans un autre projet : très mauvais résultats du à un intégrateur, dans le cas sans amortissement : une petite erreur peut faire diverger totalement la réponse du système
+Identifier un système instable (ou en limite de stabilité) est toujours plus compliqué qu'un système stable
+
+Sur Aphinity cela n'a pas semblé posé de problème et marchait plutot bien mais il n'avait pas vraiment de cas semblable au notre sans amortissement
+
+Tentative d'implémentation de la dynamique du pont roulant
+-> peut être un bon objectif dans le cas où on ne peut pas arriver jusqu'à la chaudière
+
+Mr Le Guen plutôt satisfait du rapport -> rajouter une légende dans les figures du pendule simple pour les différentes courbes
+
+Prochaine réunion le 6 mars à 11h (à confirmer par rapport à l'emploi du temps de Mr Faille)
+-> Mise à jour : Reunion le 14 mars à 11h
