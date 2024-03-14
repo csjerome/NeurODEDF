@@ -1,4 +1,4 @@
-#%%
+ #%%
 import torch
 import torch.nn as nn
 
@@ -21,7 +21,7 @@ elif model_phy_option == 'data_driven':
     model_phy = None
 
 if model_aug_option == True :
-    model_aug = MLP(state_c=2, hidden=100,input=1)
+    model_aug = MLP(state_c=4, hidden=100,input=1)
 else : model_aug = None
 
 net = Forecaster(model_phy=model_phy, model_aug=model_aug)

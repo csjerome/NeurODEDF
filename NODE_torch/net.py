@@ -80,9 +80,9 @@ class DerivativeEstimator(nn.Module):
     def forward(self, t, state):
         res = 0
         if self.model_phy != None:
-            res += self.model_phy(state,self.action[:,int(t/self.dt)])
+            res += self.model_phy(state,self.action[:,int(t/self.dt)-1])
         if self.model_aug != None:
-            res += self.model_aug(state,self.action[:,int(t/self.dt)])
+            res += self.model_aug(state,self.action[:,int(t/self.dt)-1])
         return res
 
 class Forecaster(nn.Module):
