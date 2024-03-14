@@ -41,7 +41,7 @@ class DampledPendulum(Dataset):
         s = 1
         np.random.seed(seed if self.group == 'train' else np.iinfo(np.int32).max - seed)
         u = np.random.normal(0,s,(int(self.time_horizon/self.dt),1))
-        return u
+        return u.astype(np.float32)
 
     def __getitem__(self, index):
         t_eval = torch.from_numpy(np.arange(0, self.time_horizon, self.dt))

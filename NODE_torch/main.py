@@ -1,7 +1,8 @@
 #%%
 import torch
 import torch.nn as nn
-
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 from dataset import create_dataset
 from net import *
 from train import *
@@ -36,7 +37,7 @@ optimizer = torch.optim.Adam(net.parameters(), lr=tau_1, betas=(0.9, 0.999))
 experiment = APHYNITYExperiment(
     train= train, test=test, net=net, optimizer=optimizer,
     min_op=min_op, lambda_0=lambda_0, tau_2=tau_2, niter=niter, nlog=10,
-    nupdate=100, nepoch=50000)
+    nupdate=50, nepoch=700)
 
 experiment.run()
 #%%

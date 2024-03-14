@@ -8,7 +8,7 @@ import shelve
 import matplotlib as mpl
 mpl.use('TkAgg')
 
-file = 'model_1.65e+00.pt'
+file = 'model_9.27e-01.pt'
 param = torch.load('./exp/'+ file)
 train, test = create_dataset()
 
