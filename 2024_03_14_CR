@@ -1,0 +1,60 @@
+Compte rendu de la réunion du 14 mars 2024 
+
+Réseau de neurone :
+
+Implémenter (créer des données et tester sur les equations pont roulant)
+Création du dataset fonctionnel et résultats cohérents
+Action aléatoire pour pouvoir tester la réaction du modèle
+Le réseau de neurones permet d'afficher les tendances du modèle par contre il a du mal à epouser la sinusoide (theoreme de Shannon) 
+-> tentative pour résoudre : résultat encore moins bon 
+-> fonctionne en revanche bien lors d'une tendance général
+
+Modèle de pont roulant : création de la dynamique reprise sur un article 
+Longueur du cable : faite à la main (dimensionnement fait de manière cohérente mais pas basé sur un cas industriel
+
+Dans ce cas, pas de plage de donnée, processus stochiastique pris en compte de la force N-1 pour la définition de la force N
+-> plus de plage de prédiction de la force qui va être appliquée
+
+Critère d'apprentissage : Norme 2 
+Attention bien normaliser pour être sur de bien prendre en compte les valeurs dans le critère (prédominance de x comparée à theta dans le critère)
+
+Courbe en haut à droite : processus stochiastique inspirée d'une loi normale avec prise en compte de la valeur précedente pour influer sur sa moyenne
+-> Normalement pour l'identification pour SPDA sur l'entrée
+-> Représenter les signaux par des stairs (fonction matlab)
+
+Autre remarque : pas de temps (0.1s) peut-être trop rapide pour le pont roulant
+
+Le système que l'on considère est instable en boucle ouverte (double intégrateur)
+-> Faire de l'indentification d'un système instable en BO est toujours compliquée peut importe la méthode
+
+Entrée alimentation d'un moteur - Sortie en vitesse 
+Le comportement du système ne dépend pas de la position mais seulement de la vitesse - comportement du theta dépend seulement de v 
+Etat theta dtheta et v (dans l'équation rien ne dépend de x - ajout seulement de l'intégrateur à la fin pour obtenir x)
+
+Implémentation du MPC :
+
+Réseau de neurone fonctionnel malgré une loss plutot importante 
+
+Probleme de convergence avec le réseau de neurone 
+
+Diminuer l'horizon
+Modélisation du réseau de neurone avec poids et biais
+-> fonction dans Pytorch pour implémenter le réseau de neurone
+
+Problématique lors de l'ajour du réseau de neurone
+-> volonté de tester avec l'ajout d'un bruit pour voir l'impact avec le réseau de neurone
+-> impression que le réseau fonctionne à l'envers
+
+Utilisation des FMUs :
+
+test des FMU, cas du pendule simple
+mauvaise sortie, emballement du système
+pourquoi 0.1 comme dt, peut-être mettre un pas plus adapté
+y a deux types de FMU, les FMU en cosimulation et celles en model exchange
+dymola peut faire les deux, ça peut tenter de s'importer sur simulink
+regarder les solveurs qu'on prend, parce que si on ne l'embarque pas
+regarder ce que les élèves de l'année dernière avait fait
+ils avaient aussi utilisé openmodelica
+[Pause python]
+nouveau step time et ça marche bien mieux
+sur simulink il y a plusieurs solveurs notamment certains à pas variables
