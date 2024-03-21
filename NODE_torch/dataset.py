@@ -142,7 +142,7 @@ def create_dataset(batch_size=25):
     dataset_train_params = {
         'num_seq': 25,
         'time_horizon': 20,
-        'dt': 0.1,
+        'dt': 0.5,
         'group': 'train',
         'path': '.\exp\_train_pont',
     }

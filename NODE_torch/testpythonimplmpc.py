@@ -7,7 +7,7 @@ import matplotlib as mpl
 mpl.use('TkAgg')
 
 # conditions initiales et trajectoire de référence
-condinit = np.array([-1., 0.])
+condinit = np.array([0., 0.,0.,0.])
 Xreference = np.ones(1000)
 # paramètres du pendule
 omega0_square = 1
@@ -20,9 +20,9 @@ Nsignaux, Horizon, Nkeptsignals, Nstepcrossentropy = 100, 30, 10, 10
 # paramètres de pondération du coût
 q, r = 10, 1
 
-file = 'model_9.27e-01.pt'
+file = 'model_2.69e-03.pt'
 param = torch.load('./exp/'+ file)
-net = Forecaster(model_phy=None, model_aug=MLP(state_c=2, hidden=100,input=1))
+net = Forecaster(model_phy=None, model_aug=MLP(state_c=4, hidden=100,input=1))
 net.load_state_dict(param['model_state_dict'])
 net.eval()
 
@@ -110,7 +110,7 @@ for i in range(int(Tf/dt)):
     
         Costlist = torch.zeros(Nsignaux)
         for j in range(Nsignaux):
-            Xexpected = Testresult[j,0,:]
+            Xexpected = Testresult[j,2,:]
             Costlist[j]= cost(Xexpected, Xreference[i:i + Horizon], Testsignals[j])
         Indexlist = sorted(enumerate(Costlist), key = lambda  x : x[1])
         Indexlist = [j[0] for j in Indexlist]
@@ -128,15 +128,15 @@ for i in range(int(Tf/dt)):
     net.derivative_estimator.action = torch.tensor([Bettersignals[0]])
     Statevector = net.int_(net.derivative_estimator, torch.tensor([Statevector]), t = torch.tensor([0.,dt])).detach().numpy()[1,0]
     #print(Statevector)
-    posi.append(Statevector[0])
-    vite.append(Statevector[1])
+    posi.append(Statevector[2])
+    vite.append(Statevector[0])
     consigne.append(Bettersignals[0][0])
 
 time = [i*dt for i in range(int(Tf/dt)+1)]
 timec = [i*dt for i in range(int(Tf/dt))]
 ref = [Xreference[i] for i in range(len(time))]
 plt.plot(time, posi, color='blue', label = 'Position')
-plt.plot(time, vite, color='red', label = 'Vitesse')
+plt.plot(time, vite, color='red', label = 'Angle')
 plt.plot(timec, consigne, color ='green', label = 'Consigne')
 plt.plot(time, ref, color='black', label = 'Référence')
 plt.legend()
