@@ -3,19 +3,20 @@ import matplotlib.pyplot as plt
 import random as rd
 import torch
 from net import *
-
+import matplotlib as mpl
+mpl.use('TkAgg')
 
 # conditions initiales et trajectoire de référence
-condinit = [-1, 0]
-Xreference = [1]*1000
+condinit = np.array([-1., 0.])
+Xreference = np.ones(1000)
 # paramètres du pendule
 omega0_square = 1
 alpha = 0.1
-sat = 1 
+sat = 2
 # paramètres du temps
-Tf, dt = 5, 0.1
+Tf, dt = 20, 0.1
 # paramètres de la cross entropy
-Nsignaux, Horizon, Nkeptsignals, Nstepcrossentropy = 100, 10, 10, 10
+Nsignaux, Horizon, Nkeptsignals, Nstepcrossentropy = 100, 30, 10, 10
 # paramètres de pondération du coût
 q, r = 10, 1
 
@@ -29,13 +30,12 @@ def generatesignals(n, horizon, listemu, listesigma):
     L = [[0 for i in range(horizon)] for j in range(n)]
     for i in range(n):
         for j in range(horizon):
-            L[i][j] = rd.normalvariate(listemu[j], listesigma[j])
-    return L
+            L[i][j] = [rd.normalvariate(listemu[j], listesigma[j])]
+    return np.array(L).astype(np.float32)
 
 def cost(xexpected, xreference, u):
-    L = [xexpected[i]-xreference[i] for i in range(len(xexpected))]
-    Lp = [i**2 for i in L]
-    return 1/2*q*np.sqrt(sum(Lp)) #+ 1/2*r*np.linalg.norm(u)
+    Lp = torch.norm(xexpected - torch.tensor(xreference))
+    return Lp
 
 def keepbest(signauxtest, nkeptsignals, indexlist):
     L = [signauxtest[indexlist[i]] for i in range(nkeptsignals)]
@@ -46,6 +46,7 @@ def modelependule(x, u):
     return y
 
 def modelependulenn(x, u):
+    '''
     A = np.array(param['model_state_dict']['model_aug.net.0.weight'])
     B = np.array(param['model_state_dict']['model_aug.net.0.bias'])
     C = np.array(param['model_state_dict']['model_aug.net.2.weight'])
@@ -54,17 +55,20 @@ def modelependulenn(x, u):
     F = np.array(param['model_state_dict']['model_aug.net.4.bias'])
     p = np.array([x[0], x[1], u])
     etape1 = np.add(np.matmul(A,p),B)
-    etape2 = np.add(np.matmul(C,etape1),D)
     etape3 = np.add(np.matmul(E,etape2),F)
     a = net.model_aug(torch.Tensor([x[0], x[1], u]))
     y = [x[0] + dt*a[0],x[1] + dt*a[1]]
+    t
+    y = etape2 = np.add(np.matmul(C,etape1),D)
+    y = etape3 = np.add(np.matmul())'''
+    x = np.array(x)
+    u = torch.tensor(u)
+    print(x,u)
+    Y = torch.cat((x,u),-1)
+    dy = net.forward(x,t,u)
+    y = [x[0] + dt*dy[0],x[1] + dt*dy[1]]
     return y
 
-def average(L):
-    a = 0
-    for i in range(len(L)):
-        a = a + L[i]
-    return a/len(L)
 
 def standarddeviation(L):
     a = 0
@@ -82,50 +86,51 @@ def verifordre(L):
 
 
 scoredeb, scorefin =[], []
-Statevector = condinit
+Statevector = condinit.astype(np.float32)
 posi, vite, consigne = [Statevector[0]], [Statevector[1]], []
 for i in range(int(Tf/dt)):
     print(str(i)+'/'+str(int(Tf/dt)))
     mu = [0] * Horizon
     sigma = [1] * Horizon
-    Testresult = [[[Statevector[0], Statevector[1]] for i in range(Horizon)] for i in range(Nsignaux)]
-
+    Y0 = np.repeat(Statevector[np.newaxis, :], Nsignaux, axis = 0)
     for l in range(Nstepcrossentropy):
         if l != 0 :
-            Testsignals = Bettersignals + generatesignals(Nsignaux - Nkeptsignals, Horizon, mu, sigma)
+            Testsignals = generatesignals(Nsignaux, Horizon, mu, sigma)
         else :
             Testsignals = generatesignals(Nsignaux, Horizon, mu, sigma)
         for j in range(len(Testsignals)):
             for k in range(len(Testsignals[j])):
-                if Testsignals[j][k] > sat :
-                    Testsignals[j][k] = sat
-                elif Testsignals[j][k] < -sat :
-                    Testsignals[j][k] = -sat
-        for j in range(Nsignaux):
-            for k in range(1, Horizon):
-                Testresult[j][k] = modelependulenn(Testresult[j][k-1], Testsignals[j][k-1])
+                for m in range(len(Testsignals[j][k])):
+                    if Testsignals[j][k][m] > sat :
+                        Testsignals[j][k][m] = sat
+                    elif Testsignals[j][k][m] < -sat :
+                        Testsignals[j][k][m] = -sat
+        t = torch.arange(0,Horizon*dt,dt)
+        Testresult = net.forward(torch.tensor(Y0), t,torch.tensor(Testsignals))
     
-        Costlist = []
+        Costlist = torch.zeros(Nsignaux)
         for j in range(Nsignaux):
-            Xexpected = [Testresult[j][k][0] for k in range(Horizon)]
-            Costlist.append(cost(Xexpected, Xreference[i:i + Horizon], Testsignals[j]))
+            Xexpected = Testresult[j,0,:]
+            Costlist[j]= cost(Xexpected, Xreference[i:i + Horizon], Testsignals[j])
         Indexlist = sorted(enumerate(Costlist), key = lambda  x : x[1])
         Indexlist = [j[0] for j in Indexlist]
-        Bettersignals = keepbest(Testsignals, Nkeptsignals, Indexlist)
+        Bettersignals = Testsignals[Indexlist[:Nkeptsignals]]
         if not(verifordre([Costlist[Indexlist[i]] for i in range(len(Indexlist))])):
             print('ERREUR ERREUR ERREUR')
         mu, sigma = [], []
         if l == 0 :
-            scoredeb.append(average(Costlist))
+            scoredeb.append(torch.mean(Costlist))
         if l == Nstepcrossentropy-1 :
-            scorefin.append(average(Costlist))
+            scorefin.append(torch.mean(Costlist))
         for j in range(Horizon):
             mu.append(np.mean([Bettersignals[k][j] for k in range(Nkeptsignals)]))
             sigma.append(np.std([Bettersignals[k][j] for k in range(Nkeptsignals)])) #Calcul des nouvelles moyennes et écarts-type
-    Statevector = modelependule(Statevector, Bettersignals[1][1])
+    net.derivative_estimator.action = torch.tensor([Bettersignals[0]])
+    Statevector = net.int_(net.derivative_estimator, torch.tensor([Statevector]), t = torch.tensor([0.,dt])).detach().numpy()[1,0]
+    #print(Statevector)
     posi.append(Statevector[0])
     vite.append(Statevector[1])
-    consigne.append(Bettersignals[1][1])
+    consigne.append(Bettersignals[0][0])
 
 time = [i*dt for i in range(int(Tf/dt)+1)]
 timec = [i*dt for i in range(int(Tf/dt))]
@@ -137,6 +142,5 @@ plt.plot(time, ref, color='black', label = 'Référence')
 plt.legend()
 plt.show()
 
-plt.plot(scoredeb, color = 'blue')
-plt.plot(scorefin, color = 'red')
-plt.show()
+#plt.plot(scoredeb, color = 'blue')
+#plt.plot(scorefin, color = 'red')
