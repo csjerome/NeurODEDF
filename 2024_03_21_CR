@@ -1,0 +1,41 @@
+Présentation des avancées mais point plus rapide du à la proximité entre les points d'avancement
+Attention aux noms utilisés dans les légendes
+-> vitesse nulle avec position constante 
+-> test avec l'angle dtheta (vitesse) 
+
+Le reseau a du mal à simuler le sinus générée par l'angle
+(Peut venir de la dynamique du réseau de neurone -> le modèle réseau de neurones ne modèlise pas bien la vitesse)
+-> contrainte de temps, mettre la vitesse comme variable 
+-> hypothèse : commander la vitesse
+-> Possibilité de compléter le modèle avec un intégrateur (à tester la régulation en vitesse)
+
+Avancé sur le modèle analytique, sur le MPC, la création d'un modèle hybride
+Le modèle analytique sera de remplacer par la fmu
+
+Il est intérressant de garder toutes les options pour faire des comparaisons entre modele data driven, modele hybride, modele analytique
+Il y a des aspects intéressant dans les trois 
+Rajouter l'intégrateur dans la commande
+
+Simulation du réseau de neurones en appliquant seulement une force en boucle ouverte 
+-> Plus de mal dans le cas de la vitesse que pour la position 
+
+Méthode d'identification 
+-> FPBA pour avoir des echelons 
+-> necessite une simulation plus longue pour que le modèle est le temps de voir l'action intégrale (séquence trop courte)
+-> meilleur signal pour identifier des créneaux avec séquences aléatoirte (random signal)
+-> Période d'echelons trop courte pour étudier le comportement (bien tester la réponse indicielle) 
+-> bien se baser sur ce que l'on connait de l'identification linéaire 
+-> si le protocole d'essai n'est pas bon, on ne peux pas avoir un bon modèle
+
+MPC -> optimisation ressemblant à un algorithme heuristique/génétique
+Simulation du système complet 
+- Modèle analytique (eq diff)
+- remplacer par une classe python
+- commande recalculer à chaque pas de temps avec le nouvel horizon
+
+Pour la semaine prochaine 
+- FMU dans le cas du pendule 
+- Pont roulant
+- Etude des différents modèles (analytique/hybrides/data-driven)
+- Partie théorique à bien étudier, bien poser le problème avant de réaliser la partie pratique, réalisation de la méthode
+- Prendre contact avec Madame Tebbany pour la commande optimale
