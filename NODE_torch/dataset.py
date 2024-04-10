@@ -48,7 +48,7 @@ class DampledPendulum(Dataset):
         if self.data.get('states_' + str(index)) is None:
             y0 = self._get_initial_condition(index)
             u = self._get_action(index)
-            states = solve_ivp(fun=self._f, t_span=(0, self.time_horizon), y0=y0, method='DOP853', t_eval=t_eval, rtol=1e-10, args = (u,)).y
+            states = solve_ivp(fun=self._f, t_span=(0, self.time_horizon), y0=y0, method='RK45', t_eval=t_eval, rtol=1e-10, args = (u,)).y
 
             self.data['states_' + str(index)] = states
             self.data['actions_' + str(index)] = u
@@ -85,16 +85,20 @@ class Pont_roulant(Dataset):
         F = u[int(t/self.dt)-1]
         #print(th*180/np.pi)
         dt = self.dt
-        M = self.params['M_mass']
-        m = self.params['m_mass']
-        l = self.params['length']
+        M = self.params['M_mass'].item()
+        m = self.params['m_mass'].item()
+        l = self.params['length'].item()
+
         g = 9.81
 
+        #dth, x, dx = dth/self.dt, x*l*10, dx/self.dt*l*10
 
         dTh = dth
         ddTh = -((M+m)*g*np.sin(th)+m*l*np.sin(th)*np.cos(th)*dth**2+np.cos(th)*F)/(M+m*np.sin(th)**2)/l
         dX = dx
         ddX = (m*l*dth**2*np.sin(th)+m*g*np.sin(th)*np.cos(th)+ F)/(M+m*np.sin(th)**2)
+
+        #dTh, ddTh, dX, ddX = dTh*dt, ddTh*dt**2, dX/l*dt/10, ddX*dt**2/l/10
         return np.concatenate([dTh,ddTh,dX,ddX], axis=-1)
 
     def _get_initial_condition(self, seed):
@@ -156,14 +160,14 @@ def create_dataset(batch_size=25, dt = 0.5, time_horizon = 20):
         'time_horizon': time_horizon,
         'dt': dt,
         'group': 'train',
-        'path': '.\exp\_train_pont_true',
+        'path': '.\exp\_train_pont_adim',
     }
 
     dataset_test_params = dict()
     dataset_test_params.update(dataset_train_params)
     dataset_test_params['num_seq'] = 25
     dataset_test_params['group'] = 'test'
-    dataset_test_params['path'] = '.\exp\_test_pont_true'
+    dataset_test_params['path'] = '.\exp\_test_pont_adim'
 
     #dataset_train = DampledPendulum(**dataset_train_params)
     #dataset_test  = DampledPendulum(**dataset_test_params)

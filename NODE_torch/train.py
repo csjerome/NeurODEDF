@@ -20,15 +20,13 @@ class Experiment():
         self.test = test
 
     def traj_loss(self,x,y):
-        with torch.no_grad():
-            x[:,0] *= 1/self.train.dataset.params['length']
-            x[:,1] *= 1/self.train.dataset.params['length']*self.net.derivative_estimator.dt
-            x[:,3] *= self.net.derivative_estimator.dt
-            y[:,0] *= 1/self.train.dataset.params['length']
-            y[:,1] *= 1/self.train.dataset.params['length']*self.net.derivative_estimator.dt
-            y[:,3] *= self.net.derivative_estimator.dt
+        base = torch.zeros_like(y[:,0])
+        Loss = 0
+        for i in range(y.shape[1]):
+            L = nn.MSELoss()(y[:,i],base)
+            Loss += nn.MSELoss()(x[:,i],y[:,i])/L
+        return Loss
 
-        return nn.MSELoss()(x,y)
     def train_step(self, batch):
         self.net.train(True)
         #batch = torch.as_tensor(batch, device ='cpu')
@@ -124,6 +122,8 @@ class Experiment():
                         if True : #loss_test_min == None or loss_test_min > loss_test:
                             loss_test_min = loss_test
                             torch.save({
+                                'model_phy' : self.net.model_phy,
+                                'model_aug' : self.net.model_aug,
                                 'dt': self.net.derivative_estimator.dt,
                                 'horizon' : batch['t'][0,-1] + self.net.derivative_estimator.dt ,
                                 'epoch': epoch,

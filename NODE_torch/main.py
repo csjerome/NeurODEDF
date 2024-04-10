@@ -8,21 +8,22 @@ from dataset import create_dataset
 from net import *
 from train import *
 
-train, test = create_dataset(dt = 0.5, time_horizon = 50)
+dt = 0.5
+train, test = create_dataset(dt = dt, time_horizon = 50)
 
-model_phy_option = 'incomplete'
-model_aug_option = True
+model_phy_option = 'complete'
+model_aug_option = False
 
 if model_phy_option == 'incomplete':
-    model_phy = Pont_roulantPDE(is_complete=False, real_params=None)
+    model_phy = Pont_roulantPDE(dt = dt,is_complete=False, real_params=None)
 elif model_phy_option == 'complete':
-    model_phy = Pont_roulantPDE(is_complete=True, real_params=None)
+    model_phy = Pont_roulantPDE(dt = dt, is_complete=True, real_params=None)
 elif model_phy_option == 'true':
-    model_phy = Pont_roulantPDE(is_complete=True, real_params=train.dataset.params)
+    model_phy = Pont_roulantPDE(dt = dt, is_complete=True, real_params=train.dataset.params)
 elif model_phy_option == 'data_driven':
     model_phy = None
 
-model_phy = Pont_roulantPDE(is_complete=False, real_params= train.dataset.params)
+#model_phy = Pont_roulantPDE(dt = dt, is_complete=False, real_params= train.dataset.params)
 
 if model_aug_option == True :
     model_aug = MLP(state_c=4, hidden=100,input=1)
