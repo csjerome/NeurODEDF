@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 import statistics
 
-class APHYNITYExperiment():
+class Experiment():
     def __init__(self, train, test, net, optimizer, min_op, lambda_0, tau_2, niter, nlog, nupdate, nepoch):
         self.path = './exp'
-        self.traj_loss = nn.MSELoss()
         self.net = net.to('cpu')
         self.optimizer = optimizer
 
@@ -20,13 +19,22 @@ class APHYNITYExperiment():
         self.train = train
         self.test = test
 
+    def traj_loss(self,x,y):
+        with torch.no_grad():
+            x[:,0] *= 1/self.train.dataset.params['length']
+            x[:,1] *= 1/self.train.dataset.params['length']*self.net.derivative_estimator.dt
+            x[:,3] *= self.net.derivative_estimator.dt
+            y[:,0] *= 1/self.train.dataset.params['length']
+            y[:,1] *= 1/self.train.dataset.params['length']*self.net.derivative_estimator.dt
+            y[:,3] *= self.net.derivative_estimator.dt
+
+        return nn.MSELoss()(x,y)
     def train_step(self, batch):
         self.net.train(True)
         #batch = torch.as_tensor(batch, device ='cpu')
         loss, output = self.step(batch)
         with torch.no_grad():
             metric = self.metric(**output, **batch)
-
         return batch, output, loss, metric
 
     def val_step(self, batch):
@@ -72,7 +80,7 @@ class APHYNITYExperiment():
 
         loss = {
             'loss': loss,
-            'loss_op': loss_op,
+            'loss_op': loss_op
         }
 
         output = {
@@ -92,8 +100,8 @@ class APHYNITYExperiment():
     def metric(self, states, states_pred, **kwargs):
         metrics = {}
         if self.net.model_phy is None : return metrics
-        metrics['param_error'] = statistics.mean(abs(v1-float(v2))/v1 for v1, v2 in zip(self.train.dataset.params.values(), self.net.model_phy.params.values()))
-        metrics.update({f'{k}': v.data.item() for k,v in self.net.model_phy.params.items()})
+        metrics['param_error'] = statistics.mean(abs(float(v1-v2))/float(v1) for v1, v2 in zip(self.train.dataset.params.values(), self.net.model_phy.params.values()))
+        metrics.update({f'{k}': v.data for k,v in self.net.model_phy.params.items()})
         metrics.update({f'{k}_real': v for k, v in self.train.dataset.params.items() if k in metrics})
         return metrics
 
@@ -110,12 +118,14 @@ class APHYNITYExperiment():
 
                 if (epoch+1) % self.nupdate == 0:
                     with torch.no_grad():
-                        _, _, loss, metric = self.val_step(next(iter(self.test)))
+                        batch, _, loss, metric = self.val_step(next(iter(self.test)))
                         loss_test = loss['loss'].item()
 
                         if True : #loss_test_min == None or loss_test_min > loss_test:
                             loss_test_min = loss_test
                             torch.save({
+                                'dt': self.net.derivative_estimator.dt,
+                                'horizon' : batch['t'][0,-1] + self.net.derivative_estimator.dt ,
                                 'epoch': epoch,
                                 'model_state_dict': self.net.state_dict(),
                                 'optimizer_state_dict': self.optimizer.state_dict(),

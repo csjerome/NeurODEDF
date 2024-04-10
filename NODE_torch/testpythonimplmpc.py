@@ -8,7 +8,7 @@ mpl.use('TkAgg')
 
 # conditions initiales et trajectoire de référence
 condinit = np.array([0., 0.,0.,0.])
-Xreference = np.ones(1000)
+Xreference = np.ones(1000) #consigne
 # paramètres du pendule
 omega0_square = 1
 alpha = 0.1
@@ -110,7 +110,7 @@ for i in range(int(Tf/dt)):
     
         Costlist = torch.zeros(Nsignaux)
         for j in range(Nsignaux):
-            Xexpected = Testresult[j,2,:]
+            Xexpected = Testresult[j,1,:]
             Costlist[j]= cost(Xexpected, Xreference[i:i + Horizon], Testsignals[j])
         Indexlist = sorted(enumerate(Costlist), key = lambda  x : x[1])
         Indexlist = [j[0] for j in Indexlist]

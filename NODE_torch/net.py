@@ -36,6 +36,48 @@ class DampedPendulumParamPDE(nn.Module):
             dpdt = - omega0_square * torch.sin(q)
 
         return torch.cat([dqdt, dpdt], dim=1)
+
+
+class Pont_roulantPDE(nn.Module):
+    def __init__(self, is_complete=False, real_params=None):
+        super().__init__()
+        self.real_params = real_params
+        self.is_complete = is_complete
+        self.params_org = nn.ParameterDict({
+            'M_mass': nn.Parameter(torch.tensor(30.), requires_grad = True),
+            'm_mass': nn.Parameter(torch.tensor(12.), requires_grad = True),
+            'length': nn.Parameter(torch.tensor(10.), requires_grad= True),
+        })
+        self.params = OrderedDict()
+        if real_params is not None:
+            self.params.update(real_params)
+
+    def forward(self, state, F):
+        if self.real_params is None:
+            self.params['M_mass'] = self.params_org['M_mass']
+            self.params['m_mass'] = self.params_org['m_mass']
+            self.params['length'] = self.params_org['length']
+        '''
+        q = state[:,0:1]
+        p = state[:,1:2]
+        '''
+        th, dth, x, dx = torch.tensor_split(state, 4, dim = 1)
+        g = 10
+        (M, m, l) = list(self.params.values())
+
+        if self.is_complete:
+            dTh = dth
+            ddTh = -((M+m)*g*torch.sin(th)+m*l*torch.sin(th)*torch.cos(th)*dth**2+torch.cos(th)*F)/(M+m*torch.sin(th)**2)/l
+            dX = dx
+            ddX = (m*l*dth**2*torch.sin(th)+m*g*torch.sin(th)*torch.cos(th)+ F)/(M+m*torch.sin(th)**2)
+
+        else:
+            dTh = dth
+            ddTh = -((M+m)*g*torch.sin(th)+m*l*torch.sin(th)*torch.cos(th)*dth**2)/(M+m*torch.sin(th)**2)/l
+            dX = dx
+            ddX = (m*l*dth**2*torch.sin(th)+m*g*torch.sin(th)*torch.cos(th))/(M+m*torch.sin(th)**2)
+
+        return torch.concatenate([dTh,ddTh,dX,ddX], axis=-1)
 class MLP(nn.Module):
     def __init__(self, state_c, hidden, input = None):
         if input is None: input = 0

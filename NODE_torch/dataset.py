@@ -63,7 +63,7 @@ class DampledPendulum(Dataset):
         return self.len
 
 class Pont_roulant(Dataset):
-    __default_params = OrderedDict(omega0_square=(2 * np.pi / 6) ** 2, alpha=0.5)
+    __default_params = OrderedDict(M_mass = torch.tensor(25.), m_mass = torch.tensor(8.), length = torch.tensor(1.2))
 
     def __init__(self, path, num_seq, time_horizon, dt, params=None, group='train'):
         super().__init__()
@@ -79,20 +79,20 @@ class Pont_roulant(Dataset):
         self.data = shelve.open(path)
 
     def _f(self, t, x,u):  # coords = [q,p]
-        omega0_square, alpha = list(self.params.values())
+        #omega0_square, alpha = list(self.params.values())
 
         th, dth, x, dx = np.split(x, 4)
         F = u[int(t/self.dt)-1]
         #print(th*180/np.pi)
         dt = self.dt
-        M = 5
-        m = 1
-        l = 1
-        g = 10
+        M = self.params['M_mass']
+        m = self.params['m_mass']
+        l = self.params['length']
+        g = 9.81
 
 
         dTh = dth
-        ddTh = -((M+m)*g*np.sin(th)+m*l*np.sin(th)*np.cos(th)*dth**2-np.cos(th)*F)/(M+m*np.sin(th)**2)/l
+        ddTh = -((M+m)*g*np.sin(th)+m*l*np.sin(th)*np.cos(th)*dth**2+np.cos(th)*F)/(M+m*np.sin(th)**2)/l
         dX = dx
         ddX = (m*l*dth**2*np.sin(th)+m*g*np.sin(th)*np.cos(th)+ F)/(M+m*np.sin(th)**2)
         return np.concatenate([dTh,ddTh,dX,ddX], axis=-1)
@@ -116,18 +116,30 @@ class Pont_roulant(Dataset):
         for i in range(len(u)-1):
             noise = np.random.normal(0,np.sqrt(self.dt))
             u[i+1,0] = u[i,0]*(1- k*self.dt) + s*noise
+        return u.astype(np.float32)
 
+    def _get_action_sbpa(self,seed):
+        A = 10 #amplitude maximal de la commande
+        N = 2
+        T = int(self.time_horizon/N/self.dt)
+        np.random.seed(seed if self.group == 'train' else np.iinfo(np.int32).max - seed)
+        u = np.zeros((int(self.time_horizon/self.dt),1))
+        for i in range(N):
+            noise = (np.random.rand()*2-1)*A
+            u[i*T:(i+1)*T,0] = np.ones(T)*noise
+        u[T*N:,0] = noise*np.ones(len(u[T*N:,0]))
         return u.astype(np.float32)
 
     def __getitem__(self, index):
         t_eval = torch.from_numpy(np.arange(0, self.time_horizon, self.dt))
         if self.data.get('states_' + str(index)) is None:
             y0 = self._get_initial_condition(index)
-            u = self._get_action(index)
+            u = self._get_action_sbpa(index)
             states = solve_ivp(fun=self._f, t_span=(0, self.time_horizon), y0=y0, method='RK23', t_eval=t_eval, rtol=1e-10, args = (u,),max_step=10).y
             self.data['states_' + str(index)] = states
             self.data['actions_' + str(index)] = u
             states = torch.from_numpy(states).float()
+            u = torch.from_numpy(u).float()
         else:
             states = torch.from_numpy(self.data['states_'+ str(index)]).float()
             u = torch.from_numpy(self.data['actions_'+ str(index)]).float()
@@ -138,20 +150,20 @@ class Pont_roulant(Dataset):
 
 
 
-def create_dataset(batch_size=25):
+def create_dataset(batch_size=25, dt = 0.5, time_horizon = 20):
     dataset_train_params = {
         'num_seq': 25,
-        'time_horizon': 20,
-        'dt': 0.5,
+        'time_horizon': time_horizon,
+        'dt': dt,
         'group': 'train',
-        'path': '.\exp\_train_pont',
+        'path': '.\exp\_train_pont_true',
     }
 
     dataset_test_params = dict()
     dataset_test_params.update(dataset_train_params)
     dataset_test_params['num_seq'] = 25
     dataset_test_params['group'] = 'test'
-    dataset_test_params['path'] = '.\exp\_test_pont'
+    dataset_test_params['path'] = '.\exp\_test_pont_true'
 
     #dataset_train = DampledPendulum(**dataset_train_params)
     #dataset_test  = DampledPendulum(**dataset_test_params)

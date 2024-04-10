@@ -8,25 +8,29 @@ import shelve
 import matplotlib as mpl
 mpl.use('TkAgg')
 
-file = 'model_2.69e-03.pt'
-param = torch.load('./exp/'+ file)
-train, test = create_dataset()
+file = 'model_7.48e-03.pt'
 
-model_phy_option = 'data_driven'
+param = torch.load('./exp/'+ file)
+dt, horizon = param['dt'], param['horizon']
+train, test = create_dataset(dt = dt, time_horizon= horizon)
+
+model_phy_option = 'incomplete'
 model_aug_option = True
 
 if model_phy_option == 'incomplete':
-    model_phy = DampedPendulumParamPDE(is_complete=False, real_params=None)
+    model_phy = Pont_roulantPDE(is_complete=False, real_params=None)
 elif model_phy_option == 'complete':
-    model_phy = DampedPendulumParamPDE(is_complete=True, real_params=None)
+    model_phy = Pont_roulantPDE(is_complete=True, real_params=None)
 elif model_phy_option == 'true':
-    model_phy = DampedPendulumParamPDE(is_complete=True, real_params=train.dataset.params)
+    model_phy = Pont_roulantPDE(is_complete=True, real_params=train.dataset.params)
 elif model_phy_option == 'data_driven':
     model_phy = None
 
 if model_aug_option == True :
     model_aug = MLP(state_c=4, hidden=100,input=1)
 else : model_aug = None
+
+model_phy = Pont_roulantPDE(is_complete=False, real_params= train.dataset.params)
 
 net = Forecaster(model_phy=model_phy, model_aug=model_aug)
 
@@ -39,10 +43,6 @@ data = next(iter(test))
 Y = data['states'][index]
 t = data['t'][index]
 u = data['actions'][index]
-my_u = np.mean(u.numpy())
-my_d = np.mean(Y.numpy())
-print(my_u)
-print(my_d)
 plt.figure()
 plt.plot(t,u, label= 'action')
 y0 = torch.unsqueeze(Y[:, 0],0)
