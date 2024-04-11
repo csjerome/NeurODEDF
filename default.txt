@@ -1,0 +1,19 @@
+[System Parameters]
+w0 = 0.8
+f = 0.3
+x0  = 0
+y0 = 10
+
+[Initial Values]
+w0i = 3
+fi = 0.5
+
+
+[Train Values]
+epochs = 200
+learning_rate = 0.05
+t_0 = 0
+t_end = 15
+t_sample = 250
+
+[Trained Values]
