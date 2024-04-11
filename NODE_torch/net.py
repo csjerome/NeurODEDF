@@ -45,9 +45,9 @@ class Pont_roulantPDE(nn.Module):
         self.real_params = real_params
         self.is_complete = is_complete
         self.params_org = nn.ParameterDict({
-            'M_mass': nn.Parameter(torch.tensor(25.), requires_grad = True),
-            'm_mass': nn.Parameter(torch.tensor(8.), requires_grad = True),
-            'length': nn.Parameter(torch.tensor(1.2), requires_grad= True),
+            'M_mass': nn.Parameter(torch.tensor(23.), requires_grad = True),
+            'm_mass': nn.Parameter(torch.tensor(8.5), requires_grad = True),
+            'length': nn.Parameter(torch.tensor(1.0), requires_grad= True),
         })
         self.params = OrderedDict()
         if real_params is not None:
@@ -133,7 +133,7 @@ class DerivativeEstimator(nn.Module):
         return res
 
 class Forecaster(nn.Module):
-    def __init__(self, model_phy, model_aug = None, method='rk4'):
+    def __init__(self, model_phy, model_aug = None, method='dopri5'):
         super().__init__()
         self.model_phy = model_phy
         self.model_aug = model_aug
