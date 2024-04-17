@@ -37,22 +37,51 @@ class DampledPendulum(Dataset):
         y0 = y0 / np.sqrt((y0 ** 2).sum()) * radius
         return y0
 
-    def _get_action(self,seed):
-        s = 1
+    def _get_action_imp(self,seed):
+        A = 10 #amplitude maximal de la commande
+        N = 5
+        T = int(self.time_horizon/N/self.dt)
         np.random.seed(seed if self.group == 'train' else np.iinfo(np.int32).max - seed)
-        u = np.random.normal(0,s,(int(self.time_horizon/self.dt),1))
+        u = np.zeros((int(self.time_horizon/self.dt),1))
+        for i in range(N):
+            noise = (np.random.rand()*2-1)*A
+            u[i*T,0] = noise
+        return u.astype(np.float32)
+    def _get_action_sbpa(self,seed):
+        A = 1 #amplitude maximal de la commande
+        N = 5
+        T = int(self.time_horizon/N/self.dt)
+        np.random.seed(seed if self.group == 'train' else np.iinfo(np.int32).max - seed)
+        u = np.zeros((int(self.time_horizon/self.dt),1))
+        for i in range(N):
+            noise = (np.random.rand()*2-1)*A
+            u[i*T:(i+1)*T,0] = np.ones(T)*noise
+        u[T*N:,0] = noise*np.ones(len(u[T*N:,0]))
         return u.astype(np.float32)
 
+    def _get_action_ou(self,seed):
+        s = 0.1
+        k = 1
+        np.random.seed(seed if self.group == 'train' else np.iinfo(np.int32).max - seed)
+        #u = np.random.normal(0,s,(int(self.time_horizon/self.dt),1))*A
+        noise = np.random.normal(0,np.sqrt(self.dt))
+        u = np.zeros((int(self.time_horizon/self.dt),1))
+        u[0,0] = noise*s
+        for i in range(len(u)-1):
+            noise = np.random.normal(0,np.sqrt(self.dt))
+            u[i+1,0] = u[i,0]*(1- k*self.dt) + s*noise
+        return u.astype(np.float32)
     def __getitem__(self, index):
         t_eval = torch.from_numpy(np.arange(0, self.time_horizon, self.dt))
         if self.data.get('states_' + str(index)) is None:
             y0 = self._get_initial_condition(index)
-            u = self._get_action(index)
+            u = self._get_action_imp(index)
             states = solve_ivp(fun=self._f, t_span=(0, self.time_horizon), y0=y0, method='RK45', t_eval=t_eval, rtol=1e-10, args = (u,)).y
 
             self.data['states_' + str(index)] = states
             self.data['actions_' + str(index)] = u
             states = torch.from_numpy(states).float()
+            u = torch.from_numpy(u).float()
         else:
             states = torch.from_numpy(self.data['states_'+ str(index)]).float()
             u = torch.from_numpy(self.data['actions_'+ str(index)]).float()
@@ -109,8 +138,8 @@ class Pont_roulant(Dataset):
         y0 = np.zeros(4)
         return y0
 
-    def _get_action(self,seed):
-        s = 0.1
+    def _get_action_ou(self,seed):
+        s = 1
         k = 1
         np.random.seed(seed if self.group == 'train' else np.iinfo(np.int32).max - seed)
         #u = np.random.normal(0,s,(int(self.time_horizon/self.dt),1))*A
@@ -138,7 +167,7 @@ class Pont_roulant(Dataset):
         t_eval = torch.from_numpy(np.arange(0, self.time_horizon, self.dt))
         if self.data.get('states_' + str(index)) is None:
             y0 = self._get_initial_condition(index)
-            u = self._get_action_sbpa(index)
+            u = self._get_action_ou(index)
             states = solve_ivp(fun=self._f, t_span=(0, self.time_horizon), y0=y0, method='RK23', t_eval=t_eval, rtol=1e-10, args = (u,),max_step=10).y
             self.data['states_' + str(index)] = states
             self.data['actions_' + str(index)] = u
@@ -155,25 +184,27 @@ class Pont_roulant(Dataset):
 
 
 def create_dataset(batch_size=25, dt = 0.5, time_horizon = 20):
+
+    prefix = "pend_im"
     dataset_train_params = {
         'num_seq': 25,
         'time_horizon': time_horizon,
         'dt': dt,
         'group': 'train',
-        'path': '.\exp\_train_pont_adim',
+        'path': '.\exp\_' + prefix + '_train',
     }
 
     dataset_test_params = dict()
     dataset_test_params.update(dataset_train_params)
     dataset_test_params['num_seq'] = 25
     dataset_test_params['group'] = 'test'
-    dataset_test_params['path'] = '.\exp\_test_pont_adim'
+    dataset_test_params['path'] = '.\exp\_' + prefix + '_test'
 
     #dataset_train = DampledPendulum(**dataset_train_params)
     #dataset_test  = DampledPendulum(**dataset_test_params)
 
-    dataset_train = Pont_roulant(**dataset_train_params)
-    dataset_test  = Pont_roulant(**dataset_test_params)
+    dataset_train = DampledPendulum(**dataset_train_params)
+    dataset_test  = DampledPendulum(**dataset_test_params)
 
 
     dataloader_train_params = {

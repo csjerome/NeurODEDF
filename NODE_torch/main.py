@@ -8,11 +8,11 @@ from dataset import create_dataset
 from net import *
 from train import *
 
-dt = 0.5
-train, test = create_dataset(dt = dt, time_horizon = 50)
+dt = 0.2
+train, test = create_dataset(dt = dt, time_horizon = 20)
 
-model_phy_option = 'complete'
-model_aug_option = False
+model_phy_option = 'data_driven'
+model_aug_option = True
 
 if model_phy_option == 'incomplete':
     model_phy = Pont_roulantPDE(dt = dt,is_complete=False, real_params=None)
@@ -29,6 +29,8 @@ if model_aug_option == True :
     model_aug = MLP(state_c=4, hidden=100,input=1)
 else : model_aug = None
 
+model_phy = DampedPendulumParamPDE(dt =dt, is_complete = True , real_params=None)
+model_aug = MLP(state_c=2, hidden=100, input = 1)
 net = Forecaster(model_phy=model_phy, model_aug=model_aug)
 
 lambda_0 = 1.0
@@ -46,4 +48,5 @@ experiment = Experiment(
     nupdate=50, nepoch=700)
 
 experiment.run()
+
 #%%

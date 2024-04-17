@@ -5,8 +5,9 @@ from collections import OrderedDict
 import numpy as np
 
 class DampedPendulumParamPDE(nn.Module):
-    def __init__(self, is_complete=False, real_params=None):
+    def __init__(self,dt, is_complete=False, real_params=None):
         super().__init__()
+        self.dt = dt
         self.real_params = real_params
         self.is_complete = is_complete
         self.params_org = nn.ParameterDict({
@@ -17,7 +18,7 @@ class DampedPendulumParamPDE(nn.Module):
         if real_params is not None:
             self.params.update(real_params)
 
-    def forward(self, state):
+    def forward(self, state, F):
         if self.real_params is None:
             self.params['omega0_square'] = self.params_org['omega0_square_org']
 
@@ -45,7 +46,7 @@ class Pont_roulantPDE(nn.Module):
         self.real_params = real_params
         self.is_complete = is_complete
         self.params_org = nn.ParameterDict({
-            'M_mass': nn.Parameter(torch.tensor(23.), requires_grad = True),
+            'M_mass': nn.Parameter(torch.tensor(22.), requires_grad = True),
             'm_mass': nn.Parameter(torch.tensor(8.5), requires_grad = True),
             'length': nn.Parameter(torch.tensor(1.0), requires_grad= True),
         })
@@ -133,7 +134,7 @@ class DerivativeEstimator(nn.Module):
         return res
 
 class Forecaster(nn.Module):
-    def __init__(self, model_phy, model_aug = None, method='dopri5'):
+    def __init__(self, model_phy, model_aug = None, method='rk4'):
         super().__init__()
         self.model_phy = model_phy
         self.model_aug = model_aug
